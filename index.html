@@ -27,9 +27,7 @@
 html,body{height:100%;margin:0;background:var(--char);color:var(--cream);font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent;}
 #app{position:fixed;inset:0;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;background:var(--char);}
 #scene{position:absolute;inset:0;width:100%;height:100%;display:block;}
-#cover2d{position:absolute;pointer-events:none;opacity:1;transition:opacity .9s ease;max-width:none;}
-#cover2d.gone{opacity:0;}
-#cover2d.on{opacity:1;}
+#cover2d{position:absolute;pointer-events:none;max-width:none;}
 #weave{position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.16;background-size:160px 160px;}
 .band{position:absolute;left:0;right:0;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));}
 #hud{position:absolute;inset:0;pointer-events:none;}
@@ -96,7 +94,7 @@ kbd{font-family:var(--body);font-weight:700;font-size:14px;color:var(--cream);ba
 .credit{margin:0;font-size:14px;color:var(--cream-soft);}
 #app.wide #title,#app.wide #end{justify-content:flex-end;align-items:center;background:linear-gradient(90deg,rgba(26,12,8,0) 45%,rgba(26,12,8,.5));}
 #app.wide #title .card,#app.wide #end .card{max-width:440px;}
-@media (prefers-reduced-motion: reduce){.judge{animation-duration:.01s}.section-label,.hint,#wishCap,#cover2d{transition:none}.chip.pop{animation:none}}
+@media (prefers-reduced-motion: reduce){.judge{animation-duration:.01s}.section-label,.hint,#wishCap{transition:none}.chip.pop{animation:none}}
 </style>
 
 <div id="app">
@@ -1237,8 +1235,8 @@ $('syncPlus').addEventListener('click',()=>{syncMs=clamp(syncMs+10,-250,250);try
 function resetRun(tStart){for(let k=0;k<NJ;k++){G.jt[k]=JT[k]<tStart-.01?JT[k]:NaN;}G.err={x:0,z:0,t:-9};G.fail=null;G.camInit=false;G.inv0=null;SEAU.uFadeEnd.value=1;POOLS[POOLS.length-1].m.material.uniforms.uAmp.value=1;RAB.setTint(0,'#000');G.endShown=false;G.lampPuff=false;G.wishIdx=0;G.wishRel=[-1,-1,-1];G.ghostUntil=0;G.lastT=tStart;
   RAB.body.rotation.set(0,0,0);RAB.root.scale.setScalar(RAB.s);RAB.root.visible=true;RAB.yawS=null;ORB.forEach(o=>o.visible=false);LAMP_END.scale.setScalar(1.3);
   DIO1.setOpacity(0);DIO1.meadowU.uProjK.value=0;DIO1.meadowU.uR.value=6.5;DIO1.meadowU.uFogOn.value=1;DIO1.meadowU.uC.value.copy(DIO1.landMid);DIO1.rabbit.material.opacity=0;
-  DIO0.rabbit.scale.x=1;for(const L of LAMPS)L.lit=L.cp<tStart;resetWishes();ui.cover.classList.remove('on');ui.wishCap.classList.remove('on');}
-function playFrom(tStart,ctrl){resetRun(tStart);G.controlFrom=ctrl;G.state='playing';hideAll();showHud(true);ui.cover.classList.add('gone');playAudio(tStart);}
+  DIO0.rabbit.scale.x=1;for(const L of LAMPS)L.lit=L.cp<tStart;resetWishes();ui.wishCap.classList.remove('on');}
+function playFrom(tStart,ctrl){resetRun(tStart);G.controlFrom=ctrl;G.state='playing';hideAll();showHud(true);coverTo(0);playAudio(tStart);}
 function resetStats(){G.attempts=1;G.perfect=0;G.judged=0;G.wishes=0;G.got.fill(0);ui.wish.textContent='0/100';}
 function startFromZero(){if(!abuf)return;actx.resume();resetStats();G.usedAuto=G.auto;playFrom(0,0);
   if(!G.auto)setTimeout(()=>{if(G.state==='playing')showHint('Toca justo en el golpe para girar donde se acaba la hierba',3400);},6600);}
@@ -1257,7 +1255,7 @@ function showFail(t){const pct=Math.round(clamp(t/LEVEL.arrive,0,1)*100);$('fail
   $('failLede').textContent=G.fail&&G.fail.kind==='wrong'?'Has girado fuera del golpe. Gira solo donde se acaba '+pw+', justo cuando suena el golpe. La última lámpara te guarda el sitio.':'No has girado a tiempo: '+pw+' se acaba en cada golpe de batería o de guitarra. La última lámpara te guarda el sitio.';
   const cp=lastCheckpoint(t);$('btnRetryCp').hidden=cp<=0;}
 function finishGame(){const played=!(G.auto||G.usedAuto);
-  ui.cover.classList.remove('gone');ui.cover.classList.add('on');
+  coverTo(1);
   setTimeout(()=>{if(G.state!=='playing'&&G.state!=='end')return;G.state='end';showHud(false);hideAll();ui.end.hidden=false;
     $('stWish').textContent=G.wishes+'/100';$('stPerf').textContent=G.judged?Math.round(G.perfect/G.judged*100)+'%':'—';$('stTries').textContent=G.attempts;
     $('endLede').textContent=played?'Has cruzado el fuego al ritmo de la canción. El tercer deseo devuelve todo al cuadro.':'Lo has visto en modo paseo. Prueba a girar tú: la hierba se acaba en cada golpe.';},1400);}
@@ -1278,7 +1276,13 @@ function updateHud(t){ui.prog.style.width=(clamp(t/LEVEL.arrive,0,1)*100)+'%';
 
 /* ---------- main loop ---------- */
 let last=performance.now();
-function frame(now){requestAnimationFrame(frame);G.frames=(G.frames||0)+1;const dt=clamp((now-last)/1000,0,.05);last=now;clock+=dt;TIME.value=clock;
+/* the flat copy of the painting fades in JS, not with a CSS transition: some browsers leave a
+   compositor transition stuck halfway while WebGL keeps the GPU busy. At 0 it leaves the page entirely. */
+const COV={from:1,to:1,t0:0,v:-1};
+function coverVal(now){const u=clamp((now-COV.t0)/900,0,1),e=u*u*(3-2*u);return COV.from+(COV.to-COV.from)*e;}
+function coverTo(v){const now=performance.now();COV.from=coverVal(now);COV.to=v;COV.t0=RM?now-1e4:now;stepCover(now);}
+function stepCover(now){const v=coverVal(now);if(Math.abs(v-COV.v)<.002&&!(v===0&&COV.v!==0))return;COV.v=v;ui.cover.style.opacity=v.toFixed(3);ui.cover.style.visibility=v<.004?'hidden':'visible';}
+function frame(now){requestAnimationFrame(frame);stepCover(performance.now());G.frames=(G.frames||0)+1;const dt=clamp((now-last)/1000,0,.05);last=now;clock+=dt;TIME.value=clock;
   let t=0;if(G.state==='playing')t=songTime();else if(G.state==='failing'||G.state==='fail')t=G.fail.t;else if(G.state==='paused')t=G.pausedT;else if(G.state==='end')t=LEVEL.end;
   if(G.state==='playing'){
     for(let k=0;k<NJ;k++){if(JT[k]>t)break;if(isNaN(G.jt[k])&&(EV_AUTO[k]||G.auto||t<G.controlFrom))doTurn(k,JT[k],false);}
@@ -1314,7 +1318,7 @@ async function boot(){
     const seen=new Set();scene.traverse(o=>{const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];for(const m of ms){for(const k of ['map']){if(m[k]&&!seen.has(m[k])){seen.add(m[k]);renderer.initTexture(m[k]);}}if(m.uniforms)for(const u in m.uniforms){const v=m.uniforms[u].value;if(v&&v.isTexture&&!seen.has(v)){seen.add(v);renderer.initTexture(v);}}}});}catch(e){}
   G.state='title';RAB.root.visible=false;
   /* first frame of the 3D cover replaces the plain image */
-  requestAnimationFrame(()=>requestAnimationFrame(()=>ui.cover.classList.add('gone')));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>coverTo(0)));
   loadAudio();}
 window.__edg={G,LEVEL,SEG,info:()=>({ndc:RAB.root.position.clone().project(camera).toArray().map(v=>+v.toFixed(2)),seg:(()=>{const t=songTime(),k=segIndex(t),s=SEG[k];return [k,+s.t0.toFixed(2),+s.t1.toFixed(2),s.mesh?+s.mesh.position.y.toFixed(2):null,+s.sy.toFixed(2),s.u?+s.u.uChar.value.toFixed(2):null,s.u?+s.u.uBurn.value.toFixed(2):null];})(),r:RAB.root.position.toArray().map(v=>+v.toFixed(2)),vis:RAB.root.visible,sc:RAB.root.scale.toArray(),cam:camera.position.toArray().map(v=>+v.toFixed(2)),state:G.state,fail:G.fail&&G.fail.t}),start:(auto)=>{G.auto=!!auto;syncOpts();startFromZero();},at:(t)=>{G.dbgT=t;},close:(a)=>{G.dbgClose=a;}};
 syncOpts();
