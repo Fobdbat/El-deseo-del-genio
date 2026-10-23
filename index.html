@@ -712,7 +712,7 @@ function stadium(L,R,r){const pts=[],n=12;const w=()=>1+(r()-.5)*.1;
   return pts;}
 const SLABS=[];
 function buildSlabs(){const r=mulberry32(77);
-  for(let k=1;k<NJ;k++){const s=SEG[k];if(s.type==='slide'){buildSlide(s);continue;}const Lr=s.L<.35?0:s.L,R=s.L<.35?RW*.92:RW;
+  for(let k=1;k<=NJ;k++){const s=SEG[k];if(s.type==='slide'){buildSlide(s);continue;}const Lr=s.L<.35?0:s.L,R=s.L<.35?RW*.92:RW;
     const sh=new THREE.Shape(stadium(Lr,RW,r));const depth=2.1;
     const g=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:false,curveSegments:2,steps:1});g.rotateX(Math.PI/2);
     const cf=WC(s.w);const top=TX.top[cf.top]||TX[cf.top]||TX.grass,side=TX.side[cf.side]||TX.earth;
@@ -735,6 +735,7 @@ function updateSlides(t){for(const S of SLIDEM){S.grp.visible=t>S.s.t0-30&&t<S.s
 function burnFront(s,t){const R=s.R;let f=R*.95*sstep(s.t1-.9,s.t1,t);if(t>s.t1)f=R*.95+(t-s.t1)*14;return f;}
 let HIDE_W=-1;
 function updateSlabs(t){for(const s of SLABS){const vis=t>s.t0-26&&t<s.t1+2.2&&t>2.3&&s.w!==HIDE_W;s.mesh.visible=vis;if(!vis)continue;
+  if(s.last){s.u.uBurn.value=0;s.u.uChar.value=0;s.mesh.position.y=s.sy-.035;continue;}/* the way into the painting: no burning, the meadow grows over it */
   const f=burnFront(s,t);s.u.uBurn.value=f;s.u.uChar.value=sstep(s.t1+.05,s.t1+.45,t);
   const dn=Math.max(0,t-s.t1-.28);s.mesh.position.y=s.sy-dn*dn*11*(s.w===worldAt(s.t1+.01)?1:0)-(t<7?3.5*(1-sstep(2.4+Math.min(4,(s.t0-9)*.12),5.8+Math.min(4,(s.t0-9)*.12)*.3,t)):0);}}
 /* ---------- the floor of each world, its horizon, the moon ---------- */
@@ -799,9 +800,10 @@ let ppA=0,ppB=0;
 function refreshPathPts(tc){ppA=tc-3;ppB=tc+16;}
 function distPath(x,z){return distPathRange(x,z,ppA,ppB);}
 let meadowGuard=null;
+function inMeadow(x,z){if(!meadowGuard)return false;for(const g of meadowGuard)if(g.r>0&&Math.hypot(x-g.c.x,z-g.c.z)<g.r+.8)return true;return false;}
 function updateAmbient(tc,focus,camPos,camDir,spawnPerFrame,A){refreshPathPts(tc);A=A||AMB;const cf=WC(A.w),gy=groundW(A.w);let changed=false,budget=spawnPerFrame;
   for(let i=0;i<A.n;i++){const x=A.P[i*3],z=A.P[i*3+2];if(A.live[i]){const dx=x-camPos.x,dz=z-camPos.z;const ahead=dx*camDir.x+dz*camDir.z;const dist=Math.hypot(dx,dz);
-      if(ahead<-6||dist>70||distPath(x,z)<2.2){A.live[i]=0;A.P[i*3+1]=-999;changed=true;}}
+      if(ahead<-6||dist>70||distPath(x,z)<2.2||inMeadow(x,z)){A.live[i]=0;A.P[i*3+1]=-999;changed=true;}}
     if(!A.live[i]&&budget>0){budget--;
       for(let tries=0;tries<4;tries++){const ang=Math.random()*Math.PI*2,rad=5+Math.pow(Math.random(),.7)*48;const px=focus.x+Math.cos(ang)*rad,pz=focus.z+Math.sin(ang)*rad;
         const dp=distPath(px,pz);if(dp<2.5)continue;
@@ -1120,17 +1122,16 @@ function releaseWish(t,byTap){const i=G.wishIdx;if(i>=3)return;if(byTap&&(t<LEVE
   showWishCap(i);if(i===1)G.ghostUntil=t+2.6;if(i===2){G.inv0=t+1.3;}}
 let wishCapT=0;function showWishCap(i){ui.hint.classList.remove('on');ui.wcK.textContent=WISH_TXT[i][0];ui.wcT.textContent=WISH_TXT[i][1];if(i===0)ui.wcT.textContent='Que fueran cien · '+G.wishes+' de 100';ui.wishCap.hidden=false;ui.wishCap.classList.remove('on');void ui.wishCap.offsetWidth;ui.wishCap.classList.add('on');clearTimeout(wishCapT);wishCapT=setTimeout(()=>ui.wishCap.classList.remove('on'),2800);}
 function updateFinale(t){
-  const pv=sstep(LEVEL.arrive-3,LEVEL.arrive-.5,t);DIO1.setOpacity(pv,DIO1.pieces);
+  /* every piece of the painting is there from the arrival, each at its own depth: they only line up from the painting's viewpoint */
+  const pv=sstep(JT[NJ-1]+.3,LEVEL.arrive-.2,t);DIO1.setOpacity(pv,DIO1.pieces);DIO1.txt.material.opacity=pv;DIO1.rabbit.material.opacity=sstep(LEVEL.arrive+1.8,LEVEL.arrive+2.3,t);
   for(let i=0;i<3;i++){const o=ORB[i];if(!o.visible)continue;const u=(t-o.userData.t0);const f=o.userData.from;o.position.set(f.x+Math.sin(u*2+i)*.6*Math.min(1,u),f.y+u*1.1+Math.sin(u*3)*.1,f.z+Math.cos(u*2+i)*.6*Math.min(1,u));o.scale.setScalar(.7+.15*Math.sin(clock*8));o.material.opacity=1-sstep(4.5,6.5,u);if(Math.random()<.6)emit(SPK,o.position.x,o.position.y,o.position.z,0,-.2,0,.7,.35,.8,.9,1);}
   if(G.lastT<LEVEL.arrive&&t>=LEVEL.arrive&&G.state==='playing')showHint(G.auto?'La lámpara concede tres deseos':'Frota la lámpara: toca la pantalla',3600);
   if(t>=LEVEL.arrive&&G.wishIdx<3)releaseWish(t,false);
   if(G.inv0!=null){const u=clamp((t-G.inv0)/4.8,0,1);
     LAMP_END.scale.setScalar(1.3*(1-sstep(0,.12,u)));if(u>0&&!G.lampPuff){G.lampPuff=true;const p=LAMP_END.position;for(let k=0;k<26;k++)emit(SMK,p.x,p.y+.3,p.z,(Math.random()-.5)*2,Math.random()*1.6,(Math.random()-.5)*2,1.8,3,3.6,3.5,4);burst(p.x,p.y+.4,p.z,40,3.5,[[1,.9,.5],[1,1,1]],1,.6);}
-    DIO1.txt.material.opacity=sstep(.86,1,u);
-    DIO1.meadowU.uR.value=lerp(6.5,64,sstep(0,.75,u));DIO1.meadowU.uProjK.value=sstep(.72,.96,u);DIO1.meadowU.uFogOn.value=1-sstep(.2,.7,u);DIO1.meadowU.uC.value.lerpVectors(DIO1.landMid,DIO1.spot,sstep(0,.5,u));
-    SEAU.uFadeEnd.value=1-sstep(.3,.85,u);POOLS[POOLS.length-1].m.material.uniforms.uAmp.value=1-sstep(.1,.7,u);moonSky.material.opacity=.95*(1-sstep(.1,.5,u));
+    DIO1.meadowU.uR.value=64;DIO1.meadowU.uProjK.value=projK();DIO1.meadowU.uFogOn.value=1-sstep(.2,.7,u);DIO1.meadowU.uC.value.copy(DIO1.spot);
+    SEAU.uFadeEnd.value=1-sstep(.3,.85,u);POOLS[POOLS.length-1].m.material.uniforms.uAmp.value=1-sstep(.1,.7,u);moonSky.material.opacity=0;
     /* the rabbit turns to the painting's pose and flips back into the canvas */
-    const flip=sstep(.62,.84,u);RAB.root.scale.set(RAB.s,RAB.s,RAB.s*Math.max(.001,1-flip));RAB.root.visible=flip<.97;DIO1.rabbit.material.opacity=sstep(.7,.86,u);
     if(u>=1&&!G.endShown){G.endShown=true;finishGame();}}}
 
 /* ---------- per-frame world update ---------- */
@@ -1138,6 +1139,8 @@ let lastBeat=-1;
 function themeParams(t){const calm=Math.max(sstep(111.6,112.6,t)*(1-sstep(117,118,t)),sstep(139.9,140.9,t)*(1-sstep(146.6,147.6,t)))*.75;
   const brk=t>121.2&&t<130.8?1:0;const b=Math.round((t-LEVEL.off)/T);const bt=LEVEL.off+b*T;const pulse=brk*Math.exp(-Math.pow((t-bt)/.09,2));
   const seaK=sstep(168.8,170.6,t)*(1-sstep(185.4,187.4,t));return {calm,brk,pulse,seaK};}
+/* the painted grass is projected from the painting's viewpoint: seen from aside it smears, so it firms up as the camera nears that viewpoint */
+function projK(){return lerp(.15,1,1-sstep(.8,7,camera.position.distanceTo(DIO1.camPos)));}
 function envState(t){const w=worldAt(t);for(const s of SLIDES){if(t>=s[0]-2.4&&t<s[1]+3){const a=worldAt(s[0]);return {a,b:a+1,k:clamp((groundW(a)+1.5-camera.position.y)/3,0,1)};}}return {a:w,b:w,k:0};}
 const _ca=new THREE.Color(),_cb=new THREE.Color();
 const SPARK_COL={noche:[1,1,.8],humo:[1,.85,1],lampara:[1,.85,.4],musica:[1,.85,.5],playa:[1,.7,.5]};
@@ -1160,7 +1163,7 @@ function updateWorld(t,dt){
   /* moon, only above the fire */
   camera.getWorldDirection(_v);const az=Math.atan2(_v.x,_v.z)+.32;const big=1+sstep(186,200,t)*.6;
   moonSky.position.set(camera.position.x+Math.sin(az)*250,camera.position.y+86,camera.position.z+Math.cos(az)*250);moonSky.lookAt(camera.position);const mb=LAYERS.moon.box;moonSky.scale.set(34*big,34*big*(mb[3]-mb[1])/(mb[2]-mb[0]),1);
-  if(G.inv0==null)moonSky.material.opacity=.95*sstep(5,8,t);moonSky.visible=!!A.burn&&k<.5;
+  if(G.inv0==null)moonSky.material.opacity=.95*sstep(5,8,t)*(1-sstep(LEVEL.arrive-1.5,LEVEL.arrive+.5,t));moonSky.visible=!!A.burn&&k<.5;
   /* intro: the diorama dissolves into the world */
   if(t<14){DIO0.fire.material.opacity=1-sstep(3,6.6,t);DIO0.moon.material.opacity=1-sstep(2.6,5.4,t);DIO0.txt.material.opacity=1-sstep(.3,1.3,t);
     DIO0.meadowU.uR.value=t<2.4?60:t<7?lerp(60,7.2,sstep(2.4,7,t)):t<9.9?7.2:lerp(7.2,0,sstep(9.9,11.8,t));DIO0.meadowU.uFogOn.value=sstep(3,7,t);DIO0.meadowU.uProjK.value=1-sstep(1.3,3.2,t);DIO0.meadow.visible=t<12.5;
@@ -1168,7 +1171,9 @@ function updateWorld(t,dt){
     const gone=1-sstep(8.2,10.6,t);DIO0.ttree.material.opacity=gone;DIO0.btree.material.opacity=gone;DIO0.bhead.material.opacity=gone;
   }
   meadowGuard=[{c:DIO0.meadowU.uC.value,r:t<12.5?DIO0.meadowU.uR.value:0},{c:DIO1.meadowU.uC.value,r:t>200?Math.max(6.5,DIO1.meadowU.uR.value):0}];
-  if(t>212&&G.inv0==null){/* the meadow grows only after the last turn, so the last islands stand out against the fire */DIO1.meadowU.uR.value=lerp(-2,6.5,sstep(JT[NJ-1]+.15,LEVEL.arrive-.8,t));DIO1.meadowU.uFogOn.value=1;}
+  if(t>212&&G.inv0==null){/* the meadow grows only after the last turn, so the last islands stand out against the fire; after arrival it spreads to the whole painting */
+    const A=LEVEL.arrive;DIO1.meadowU.uR.value=t<A?lerp(-2,6.5,sstep(JT[NJ-1]+.15,A-.8,t)):lerp(6.5,64,sstep(A,A+2.4,t));DIO1.meadowU.uFogOn.value=1;
+    DIO1.meadowU.uProjK.value=sstep(A-.6,A+1.6,t)*projK();DIO1.meadowU.uC.value.lerpVectors(DIO1.landMid,DIO1.spot,sstep(A-.4,A+1.2,t));}
   /* flames */
   const focus=_e;spine(t+1.2,focus);camera.getWorldDirection(_v);
   const bud=t<3||G.state==='title'?0:10;
@@ -1203,9 +1208,9 @@ function updateRabbit(t,dt){const R=RAB;let info;
     const coverYaw=DIO0.yaw+beta(-1,0);const k=sstep(5.2,7.0,t);yaw=lerpAngle(coverYaw,beta(H0_L.x,H0_L.z)+DIO0.yaw,k);R.head.rotation.x=lerp(-1.0,-.6,sstep(4.6,6.2,t));
     const flip=sstep(3.8,4.5,t);R.root.scale.set(R.s,R.s,R.s*Math.max(.001,flip));R.root.visible=t>3.75;
     const hopU=((t-5.1)%(T*2))/(T*2);R.body.position.y=t>5.1?Math.max(0,Math.sin(hopU*Math.PI))*.12*sstep(5.1,5.5,t):0;R.body.scale.set(1,1+Math.sin(clock*2)*.015,1);R.body.rotation.x=0;}
-  else if(t>=LEVEL.arrive){if(G.inv0==null)R.root.visible=true;const toL=Math.atan2(LAMP_END.position.x-RP.x,LAMP_END.position.z-RP.z);let target=toL;
-    if(G.inv0!=null){const u=clamp((t-G.inv0)/4.8,0,1);target=lerpAngle(toL,DIO1.yaw+beta(-1,0),sstep(.1,.55,u));R.head.rotation.x=lerp(-.6,-1.0,sstep(.15,.55,u));}else R.head.rotation.x=-.6+Math.sin(clock*1.5)*.08;
-    yaw=lerpAngle(R.yawS==null?yaw:R.yawS,target,1-Math.exp(-dt*4));R.body.position.y=0;R.body.rotation.x=0;R.body.scale.set(1,1+Math.sin(clock*2.2)*.02,1);if(G.inv0==null)R.root.scale.setScalar(R.s*lerp(1.45,1,sstep(LEVEL.arrive,LEVEL.arrive+2.5,t)));}
+  else if(t>=LEVEL.arrive){const A=LEVEL.arrive,fl=sstep(A+1.6,A+2.3,t),po=sstep(A+1.0,A+1.7,t);R.root.visible=fl<.97;const toL=Math.atan2(LAMP_END.position.x-RP.x,LAMP_END.position.z-RP.z);
+    const target=lerpAngle(toL,DIO1.yaw+beta(-1,0),po);R.head.rotation.x=lerp(-.6+Math.sin(clock*1.5)*.08,-1.0,po);
+    yaw=lerpAngle(R.yawS==null?yaw:R.yawS,target,1-Math.exp(-dt*4));R.body.position.y=0;R.body.rotation.x=0;R.body.scale.set(1,1+Math.sin(clock*2.2)*.02,1);{const sc=R.s*lerp(1.45,1,sstep(A,A+1.6,t));R.root.scale.set(sc,sc,sc*Math.max(.001,1-fl));}}
   else if(info.mode==='slide'){R.root.visible=true;R.root.scale.setScalar(R.s*1.45);bezT(sg,info.u,_v3);const sl=Math.atan2(-_v3.y,Math.hypot(_v3.x,_v3.z));
     R.body.rotation.x=sl*.85;R.body.position.y=.05;R.body.scale.set(1,1,1);R.legs.forEach(l=>l.rotation.x=-1.25);R.head.rotation.x=-.95+Math.sin(clock*6)*.05;
     if(Math.random()<.5)emit(SPK,RP.x,RP.y+.2,RP.z,0,.5,0,.4,.35,1,.95,.7);}
