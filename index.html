@@ -185,6 +185,19 @@ kbd{font-family:var(--body);font-weight:700;font-size:14px;color:var(--cream);ba
       <p class="credit">«El deseo del genio» · Sr. Chinarro</p>
     </div>
   </div>
+  <style>
+  /* crèdit EMS: enllaç a la pantalla inicial i final; text pla durant la partida */
+  #emsCredit{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;padding:0 16px calc(8px + env(safe-area-inset-bottom,0px));pointer-events:none;}
+  #emsCredit a{pointer-events:auto;font-family:var(--body);font-weight:700;font-size:11.5px;letter-spacing:.12em;color:rgba(207,199,191,.68);text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 8px rgba(0,0,0,.6);padding:4px 6px;white-space:nowrap;}
+  #emsCredit a:hover,#emsCredit a:focus-visible{color:var(--cream);text-decoration:underline;}
+  #app.wide #emsCredit{left:auto;right:max(16px, env(safe-area-inset-right,0px));width:min(440px, calc(100% - 32px));padding-left:0;padding-right:0;}
+  /* durant la partida: text pla, no clicable (els tocs passen al joc) i la lletra puja una mica per no tapar-lo */
+  #hud:not([hidden]) ~ #emsCredit a{pointer-events:none;cursor:default;}
+  #app.wide #hud:not([hidden]) ~ #emsCredit{left:0;right:0;width:auto;padding:0 16px calc(8px + env(safe-area-inset-bottom,0px));}
+  .caption{padding-bottom:calc(34px + env(safe-area-inset-bottom,0px));}
+  #title,#end{padding-bottom:calc(34px + env(safe-area-inset-bottom,0px));}
+  </style>
+  <div id="emsCredit"><a href="https://www.europemultimediaservice.com" target="_blank" rel="noopener">© EMS – WWW.EUROPEMULTIMEDIASERVICE.COM</a></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1343,6 +1356,7 @@ function gcEvent(name){try{if(window.goatcounter&&window.goatcounter.count)windo
 ['btnPlay','btnAgain','btnRestartP'].forEach(id=>{const b=document.getElementById(id);if(b)b.addEventListener('click',()=>gcEvent('partida-iniciada'));});
 {const b=document.getElementById('btnWatch');if(b)b.addEventListener('click',()=>gcEvent('paseo-iniciado'));}
 {const b=document.getElementById('btnSpotify');if(b)b.addEventListener('click',()=>gcEvent('clic-spotify'));}
+{const a=document.querySelector('#emsCredit a');if(a){a.addEventListener('pointerdown',e=>e.stopPropagation());a.addEventListener('click',()=>gcEvent('clic-ems'));}}
 </script>
 <script data-goatcounter="https://eldeseodelgenio.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
