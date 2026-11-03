@@ -6,7 +6,10 @@
 <meta name="description" content="Juego musical al ritmo de «El deseo del genio» (Sr. Chinarro): el conejo gris de la portada salta de camino en camino a través de un mundo en llamas.">
 <meta property="og:title" content="El deseo del genio">
 <meta property="og:description" content="Juego musical al ritmo de «El deseo del genio» (Sr. Chinarro): el conejo gris de la portada salta de camino en camino a través de un mundo en llamas.">
-<meta property="og:image" content="portada.jpg">
+<meta property="og:image" content="https://fobdbat.github.io/El-deseo-del-genio/portada.jpg">
+<meta property="og:url" content="https://fobdbat.github.io/El-deseo-del-genio/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>El deseo del genio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1265,7 +1268,7 @@ function showFail(t){const pct=Math.round(clamp(t/LEVEL.arrive,0,1)*100);$('fail
   const cp=lastCheckpoint(t);$('btnRetryCp').hidden=cp<=0;}
 function finishGame(){const played=!(G.auto||G.usedAuto);
   coverTo(1);
-  setTimeout(()=>{if(G.state!=='playing'&&G.state!=='end')return;G.state='end';showHud(false);hideAll();ui.end.hidden=false;
+  setTimeout(()=>{if(G.state!=='playing'&&G.state!=='end')return;if(G.state!=='end')gcEvent(played?'partida-acabada':'paseo-acabado');G.state='end';showHud(false);hideAll();ui.end.hidden=false;
     $('stWish').textContent=G.wishes+'/100';$('stPerf').textContent=G.judged?Math.round(G.perfect/G.judged*100)+'%':'—';$('stTries').textContent=G.attempts;
     $('endLede').textContent=played?'Has cruzado el fuego al ritmo de la canción. El tercer deseo devuelve todo al cuadro.':'Lo has visto en modo paseo. Prueba a girar tú: la hierba se acaba en cada golpe.';},1400);}
 const SKIP_KEYS=new Set(['INPUT','BUTTON','LABEL','OUTPUT']);
@@ -1335,6 +1338,12 @@ try{document.getElementById('weave').style.backgroundImage='url('+weaveURL()+')'
 requestAnimationFrame(frame);
 boot();
 
+/* ---- estadísticas: GoatCounter propio (eldeseodelgenio.goatcounter.com), separado de los otros juegos ---- */
+function gcEvent(name){try{if(window.goatcounter&&window.goatcounter.count)window.goatcounter.count({path:'el-deseo-del-genio/'+name,title:name,event:true});}catch(e){}}
+['btnPlay','btnAgain','btnRestartP'].forEach(id=>{const b=document.getElementById(id);if(b)b.addEventListener('click',()=>gcEvent('partida-iniciada'));});
+{const b=document.getElementById('btnWatch');if(b)b.addEventListener('click',()=>gcEvent('paseo-iniciado'));}
+{const b=document.getElementById('btnSpotify');if(b)b.addEventListener('click',()=>gcEvent('clic-spotify'));}
 </script>
+<script data-goatcounter="https://eldeseodelgenio.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
